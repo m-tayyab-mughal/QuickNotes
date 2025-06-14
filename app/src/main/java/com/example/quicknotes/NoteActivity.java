@@ -33,7 +33,6 @@ public class NoteActivity extends AppCompatActivity {
         deleteButton = findViewById(R.id.deleteButton);
         toolbarTitle = findViewById(R.id.toolbarTitle);
 
-        // Initialize preference manager
         preferenceManager = new PreferenceManager(this);
 
         // Check if we're editing an existing note
