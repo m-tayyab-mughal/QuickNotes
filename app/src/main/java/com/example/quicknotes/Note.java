@@ -28,6 +28,8 @@ public class Note implements Serializable {
         this.timestamp = timestamp;
     }
 
+
+
     // Getters and setters
     public String getId() {
         return id;

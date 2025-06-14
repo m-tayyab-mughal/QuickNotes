@@ -3,14 +3,10 @@ package com.example.quicknotes;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.text.method.HideReturnsTransformationMethod;
-import android.text.method.PasswordTransformationMethod;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.EditText;
-import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -18,14 +14,14 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import com.google.android.material.textfield.TextInputEditText;
+
 public class LoginFragment extends Fragment {
 
-    private EditText etEmail, etPassword;
+    private TextInputEditText etEmail, etPassword;
     private Button btnLogin;
     private TextView tvForgotPassword;
-    private ImageButton btnTogglePassword;
     private PreferenceManager preferenceManager;
-    private boolean passwordVisible = false;
 
     public LoginFragment() {
         // Required empty constructor
@@ -54,10 +50,6 @@ public class LoginFragment extends Fragment {
         etPassword = view.findViewById(R.id.Password);
         btnLogin = view.findViewById(R.id.btnLogin);
         tvForgotPassword = view.findViewById(R.id.ForgotPassword);
-        btnTogglePassword = view.findViewById(R.id.btnTogglePassword);
-
-        // Setup password visibility toggle
-        setupPasswordVisibilityToggle();
 
         // Set click listeners
         btnLogin.setOnClickListener(v -> {
@@ -69,7 +61,7 @@ public class LoginFragment extends Fragment {
         tvForgotPassword.setOnClickListener(v -> {
             // Navigate to ForgotPasswordFragment
             if (getActivity() != null) {
-                ForgotPasswordFragment forgotPasswordFragment = ForgotPasswordFragment.newInstance();
+                ForgotPasswordFragment forgotPasswordFragment = com.example.quicknotes.ForgotPasswordFragment.newInstance();
                 getActivity().getSupportFragmentManager()
                         .beginTransaction()
                         .replace(R.id.fragment_container, forgotPasswordFragment)
@@ -77,27 +69,6 @@ public class LoginFragment extends Fragment {
                         .commit();
             }
         });
-    }
-
-    private void setupPasswordVisibilityToggle() {
-        btnTogglePassword.setOnClickListener(v -> {
-            passwordVisible = !passwordVisible;
-            togglePasswordVisibility(etPassword, btnTogglePassword, passwordVisible);
-        });
-    }
-
-    private void togglePasswordVisibility(EditText editText, ImageButton toggleButton, boolean isVisible) {
-        if (isVisible) {
-            // Show password
-            editText.setTransformationMethod(HideReturnsTransformationMethod.getInstance());
-            toggleButton.setImageResource(R.drawable.ic_visibility_off);
-        } else {
-            // Hide password
-            editText.setTransformationMethod(PasswordTransformationMethod.getInstance());
-            toggleButton.setImageResource(R.drawable.ic_visibility);
-        }
-        // Move cursor to the end of text
-        editText.setSelection(editText.getText().length());
     }
 
     private boolean validateInputs() {

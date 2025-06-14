@@ -5,7 +5,7 @@ import android.content.DialogInterface;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.EditText;
-import android.widget.ImageButton;
+import android.widget.ImageView; // ✅ FIX: ImageButton ki jagah ImageView import karein
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -14,7 +14,7 @@ import androidx.appcompat.app.AppCompatActivity;
 public class NoteActivity extends AppCompatActivity {
 
     private EditText editTextTitle, editTextContent;
-    private ImageButton backButton, saveButton, deleteButton;
+    private ImageView backButton, saveButton, deleteButton;
     private TextView toolbarTitle;
     private PreferenceManager preferenceManager;
     private Note existingNote;
@@ -41,20 +41,20 @@ public class NoteActivity extends AppCompatActivity {
             isEditMode = true;
             existingNote = (Note) getIntent().getSerializableExtra("note");
 
-            // Populate fields with existing note data
-            editTextTitle.setText(existingNote.getTitle());
-            editTextContent.setText(existingNote.getContent());
+            if (existingNote != null) {
+                // Populate fields with existing note data
+                editTextTitle.setText(existingNote.getTitle());
+                editTextContent.setText(existingNote.getContent());
 
-            // Update UI for edit mode
-            toolbarTitle.setText("Edit Note");
-            deleteButton.setVisibility(View.VISIBLE);
+                // Update UI for edit mode
+                toolbarTitle.setText("Edit Note");
+                deleteButton.setVisibility(View.VISIBLE);
+            }
         }
 
         // Set click listeners
         backButton.setOnClickListener(v -> onBackPressed());
-
         saveButton.setOnClickListener(v -> saveNote());
-
         deleteButton.setOnClickListener(v -> confirmDelete());
     }
 
@@ -83,6 +83,7 @@ public class NoteActivity extends AppCompatActivity {
             Toast.makeText(this, "Note updated", Toast.LENGTH_SHORT).show();
         } else {
             // Create new note
+            // ✅ FIX: Note class ka sahi constructor istemal karein
             Note newNote = new Note(title, content);
             preferenceManager.addNote(newNote);
             Toast.makeText(this, "Note created", Toast.LENGTH_SHORT).show();
@@ -95,12 +96,7 @@ public class NoteActivity extends AppCompatActivity {
         new AlertDialog.Builder(this)
                 .setTitle("Delete Note")
                 .setMessage("Are you sure you want to delete this note?")
-                .setPositiveButton("Delete", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        deleteNote();
-                    }
-                })
+                .setPositiveButton("Delete", (dialog, which) -> deleteNote())
                 .setNegativeButton("Cancel", null)
                 .show();
     }

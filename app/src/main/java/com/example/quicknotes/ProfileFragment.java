@@ -6,37 +6,51 @@ import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Patterns;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
+import androidx.fragment.app.Fragment;
 
-public class ProfileActivity extends AppCompatActivity {
+public class ProfileFragment extends Fragment {
 
     private EditText etName, etEmail, etPassword;
     private EditText etCurrentPassword; // For verification
     private Button btnSave, btnLogout, btnDeluser;
     private PreferenceManager preferenceManager;
 
+    public ProfileFragment() {
+        // Required empty public constructor
+    }
+
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_profile);
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
+        // Inflate the layout for this fragment
+        return inflater.inflate(R.layout.fragment_profile, container, false);
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
 
         // Initialize preferences
-        preferenceManager = new PreferenceManager(this);
+        preferenceManager = new PreferenceManager(requireContext());
 
         // Initialize views
-        etName = findViewById(R.id.etProfileName);
-        etEmail = findViewById(R.id.etProfileEmail);
-        etPassword = findViewById(R.id.etProfilePassword);
-        btnSave = findViewById(R.id.btnSaveProfile);
-        btnDeluser = findViewById(R.id.btnDeluser);
-        btnLogout = findViewById(R.id.btnLogout);
+        etName = view.findViewById(R.id.etProfileName);
+        etEmail = view.findViewById(R.id.etProfileEmail);
+        etPassword = view.findViewById(R.id.etProfilePassword);
+        btnSave = view.findViewById(R.id.btnSaveProfile);
+        btnDeluser = view.findViewById(R.id.btnDeluser);
+        btnLogout = view.findViewById(R.id.btnLogout);
 
         // Setup hint behavior
         setupHintBehavior();
@@ -167,7 +181,7 @@ public class ProfileActivity extends AppCompatActivity {
 
     private void showAuthenticationDialog() {
         // Create a custom dialog for authentication
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_authenticate, null);
         builder.setView(dialogView);
 
@@ -209,24 +223,25 @@ public class ProfileActivity extends AppCompatActivity {
         // Update user profile
         preferenceManager.updateUserProfile(name, email, password);
 
-        Toast.makeText(this, "Profile updated successfully", Toast.LENGTH_SHORT).show();
-        finish(); // Return to HomeActivity
+        Toast.makeText(getContext(), "Profile updated successfully", Toast.LENGTH_SHORT).show();
     }
 
     private void logout() {
-        Toast.makeText(ProfileActivity.this, "Account Logout", Toast.LENGTH_SHORT).show();
+        Toast.makeText(getContext(), "Account Logout", Toast.LENGTH_SHORT).show();
         // Clear user data
         preferenceManager.setLoggedIn(false);
         // Return to MainActivity (login/signup screen)
-        Intent intent = new Intent(ProfileActivity.this, MainActivity.class);
+        Intent intent = new Intent(getActivity(), MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
-        finish();
+        if (getActivity() != null) {
+            getActivity().finish();
+        }
     }
 
     private void showDeleteConfirmationDialog() {
         // Create a confirmation dialog
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         builder.setTitle("Delete Account");
         builder.setMessage("Are you sure you want to delete your account? This action cannot be undone.");
 
@@ -247,7 +262,7 @@ public class ProfileActivity extends AppCompatActivity {
 
     private void showDeleteAuthenticationDialog() {
         // Create a custom dialog for authentication
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_authenticate, null);
         builder.setView(dialogView);
 
@@ -281,7 +296,7 @@ public class ProfileActivity extends AppCompatActivity {
 
             if (currentPassword.equals(storedPassword)) {
                 dialog.dismiss();
-                DeleteAccount();
+                deleteAccount();
             } else {
                 etCurrentPassword.setError("Incorrect password");
             }
@@ -289,17 +304,20 @@ public class ProfileActivity extends AppCompatActivity {
 
         btnCancel.setOnClickListener(v -> dialog.dismiss());
     }
-    private void DeleteAccount() {
+
+    private void deleteAccount() {
         // Clear user data
         preferenceManager.clearUserData();
         preferenceManager.setLoggedIn(false);
 
-        Toast.makeText(ProfileActivity.this, "Account deleted", Toast.LENGTH_SHORT).show();
+        Toast.makeText(getContext(), "Account deleted", Toast.LENGTH_SHORT).show();
 
         // Return to MainActivity (login/signup screen)
-        Intent intent = new Intent(ProfileActivity.this, MainActivity.class);
+        Intent intent = new Intent(getActivity(), MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
-        finish();
+        if (getActivity() != null) {
+            getActivity().finish();
+        }
     }
 }

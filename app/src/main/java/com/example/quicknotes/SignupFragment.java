@@ -2,29 +2,24 @@ package com.example.quicknotes;
 
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.text.method.HideReturnsTransformationMethod;
-import android.text.method.PasswordTransformationMethod;
 import android.util.Patterns;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.EditText;
-import android.widget.ImageButton;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import com.google.android.material.textfield.TextInputEditText;
+
 public class SignupFragment extends Fragment {
 
-    private EditText etName, etEmail, etPassword, etConfirmPassword;
+    private TextInputEditText etName, etEmail, etPassword, etConfirmPassword;
     private Button btnSignup;
-    private ImageButton btnTogglePassword, btnToggleConfirmPassword;
     private PreferenceManager preferenceManager;
-    private boolean passwordVisible = false;
-    private boolean confirmPasswordVisible = false;
 
     public SignupFragment() {
         // Required empty constructor
@@ -54,14 +49,9 @@ public class SignupFragment extends Fragment {
         etPassword = view.findViewById(R.id.Password);
         etConfirmPassword = view.findViewById(R.id.ConfirmPassword);
         btnSignup = view.findViewById(R.id.btnSignUp);
-        btnTogglePassword = view.findViewById(R.id.btnTogglePassword);
-        btnToggleConfirmPassword = view.findViewById(R.id.btnToggleConfirmPassword);
 
         // Setup focus listeners to clear errors
         setupFocusListeners();
-
-        // Setup password visibility toggle
-        setupPasswordVisibilityToggles();
 
         // Set click listener
         btnSignup.setOnClickListener(v -> {
@@ -71,36 +61,10 @@ public class SignupFragment extends Fragment {
         });
     }
 
-    private void setupPasswordVisibilityToggles() {
-        btnTogglePassword.setOnClickListener(v -> {
-            passwordVisible = !passwordVisible;
-            togglePasswordVisibility(etPassword, btnTogglePassword, passwordVisible);
-        });
-
-        btnToggleConfirmPassword.setOnClickListener(v -> {
-            confirmPasswordVisible = !confirmPasswordVisible;
-            togglePasswordVisibility(etConfirmPassword, btnToggleConfirmPassword, confirmPasswordVisible);
-        });
-    }
-
-    private void togglePasswordVisibility(EditText editText, ImageButton toggleButton, boolean isVisible) {
-        if (isVisible) {
-            // Show password
-            editText.setTransformationMethod(HideReturnsTransformationMethod.getInstance());
-            toggleButton.setImageResource(R.drawable.ic_visibility_off);
-        } else {
-            // Hide password
-            editText.setTransformationMethod(PasswordTransformationMethod.getInstance());
-            toggleButton.setImageResource(R.drawable.ic_visibility);
-        }
-        // Move cursor to the end of text
-        editText.setSelection(editText.getText().length());
-    }
-
     private void setupFocusListeners() {
         View.OnFocusChangeListener clearErrorListener = (v, hasFocus) -> {
             if (hasFocus) {
-                ((EditText) v).setError(null);
+                ((TextInputEditText) v).setError(null);
             }
         };
 
@@ -243,13 +207,5 @@ public class SignupFragment extends Fragment {
                     .addToBackStack(null)  // Optional: allows back navigation
                     .commit();
         }
-    }
-
-    private void clearFields() {
-        etName.setText("");
-        etEmail.setText("");
-        etPassword.setText("");
-        etConfirmPassword.setText("");
-        etName.requestFocus();
     }
 }

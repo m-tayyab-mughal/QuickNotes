@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- res/drawable/floating_add_background.xml -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+
+    <solid android:color="#2195F1" />
+
+    <stroke
+        android:width="3dp"
+        android:color="#FFFFFF" />
+
+</shape>

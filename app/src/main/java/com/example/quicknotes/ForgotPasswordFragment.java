@@ -2,29 +2,24 @@ package com.example.quicknotes;
 
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.text.method.HideReturnsTransformationMethod;
-import android.text.method.PasswordTransformationMethod;
 import android.util.Patterns;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.EditText;
-import android.widget.ImageButton;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import com.google.android.material.textfield.TextInputEditText;
+
 public class ForgotPasswordFragment extends Fragment {
 
-    private EditText etName, etEmail, etNewPassword, etConfirmPassword;
+    private TextInputEditText etName, etEmail, etNewPassword, etConfirmPassword;
     private Button btnResetPassword;
-    private ImageButton btnToggleNewPassword, btnToggleConfirmPassword;
     private PreferenceManager preferenceManager;
-    private boolean newPasswordVisible = false;
-    private boolean confirmPasswordVisible = false;
 
     public ForgotPasswordFragment() {
         // Required empty constructor
@@ -54,11 +49,6 @@ public class ForgotPasswordFragment extends Fragment {
         etNewPassword = view.findViewById(R.id.etNewPassword);
         etConfirmPassword = view.findViewById(R.id.etConfirmNewPassword);
         btnResetPassword = view.findViewById(R.id.btnResetPassword);
-        btnToggleNewPassword = view.findViewById(R.id.btnToggleNewPassword);
-        btnToggleConfirmPassword = view.findViewById(R.id.btnToggleConfirmPassword);
-
-        // Setup password visibility toggle
-        setupPasswordVisibilityToggles();
 
         // Set click listeners
         btnResetPassword.setOnClickListener(v -> {
@@ -66,32 +56,6 @@ public class ForgotPasswordFragment extends Fragment {
                 resetPassword();
             }
         });
-    }
-
-    private void setupPasswordVisibilityToggles() {
-        btnToggleNewPassword.setOnClickListener(v -> {
-            newPasswordVisible = !newPasswordVisible;
-            togglePasswordVisibility(etNewPassword, btnToggleNewPassword, newPasswordVisible);
-        });
-
-        btnToggleConfirmPassword.setOnClickListener(v -> {
-            confirmPasswordVisible = !confirmPasswordVisible;
-            togglePasswordVisibility(etConfirmPassword, btnToggleConfirmPassword, confirmPasswordVisible);
-        });
-    }
-
-    private void togglePasswordVisibility(EditText editText, ImageButton toggleButton, boolean isVisible) {
-        if (isVisible) {
-            // Show password
-            editText.setTransformationMethod(HideReturnsTransformationMethod.getInstance());
-            toggleButton.setImageResource(R.drawable.ic_visibility_off);
-        } else {
-            // Hide password
-            editText.setTransformationMethod(PasswordTransformationMethod.getInstance());
-            toggleButton.setImageResource(R.drawable.ic_visibility);
-        }
-        // Move cursor to the end of text
-        editText.setSelection(editText.getText().length());
     }
 
     private boolean validateInputs() {

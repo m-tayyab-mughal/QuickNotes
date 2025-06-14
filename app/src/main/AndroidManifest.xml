@@ -41,7 +41,7 @@
 
         <!-- Profile Activity - User profile -->
         <activity
-            android:name=".ProfileActivity"
+            android:name=".ProfileFragment"
             android:exported="false" />
 
     </application>

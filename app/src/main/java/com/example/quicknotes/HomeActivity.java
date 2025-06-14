@@ -3,79 +3,141 @@ package com.example.quicknotes;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ImageView;
-import android.widget.ListView;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.widget.LinearLayout;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.cardview.widget.CardView;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
-
-import java.util.List;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentTransaction;
 
 public class HomeActivity extends AppCompatActivity {
 
-    private ImageView profileImage;
-    private TextView tvNotes;
-    private PreferenceManager preferenceManager;
-    private FloatingActionButton fabAdd;
-    private ListView notesListView;
-    private NoteAdapter noteAdapter;
-    private List<Note> notesList;
+    private PreferenceManager preferenceManager;  // Only for login credentials
+    private LinearLayout tabHome, tabAdd, tabProfile, floatingAdd;
+    private FragmentManager fragmentManager;
+
+    // Fragment instances
+    private HomeFragment homeFragment;
+    private ProfileFragment profileFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.home);
+        setContentView(R.layout.activity_home);
 
-        // Initialize preferences
+        // Initialize preferences (only for login-related operations)
         preferenceManager = new PreferenceManager(this);
 
+        // Initialize fragment manager
+        fragmentManager = getSupportFragmentManager();
+
         // Initialize views
-        profileImage = findViewById(R.id.profileImage);
-        tvNotes = findViewById(R.id.tvNotes);
-        fabAdd = findViewById(R.id.fabAdd);
-        notesListView = findViewById(R.id.notesListView);
+        initializeViews();
 
-        // Load and display notes
-        loadNotes();
+        // Setup click listeners
+        setupClickListeners();
 
-        // Profile image click listener
-        CardView profileCard = findViewById(R.id.profileCard);
-        profileCard.setOnClickListener(v -> {
-            // Navigate to ProfileActivity
-            Intent intent = new Intent(HomeActivity.this, ProfileActivity.class);
-            startActivity(intent);
-        });
+        // Load default fragment (Home)
+        if (savedInstanceState == null) {
+            loadHomeFragment();
+        }
+    }
 
-        // FAB click listener for adding new notes
-        fabAdd.setOnClickListener(v -> {
-            // Open NoteActivity to create a new note
-            Intent intent = new Intent(HomeActivity.this, NoteActivity.class);
-            startActivity(intent);
-        });
+    private void initializeViews() {
+        tabHome = findViewById(R.id.tab_home);
+        tabAdd = findViewById(R.id.tab_add);
+        tabProfile = findViewById(R.id.tab_profile);
+        floatingAdd = findViewById(R.id.floating_add);
+    }
 
-        // Set item click listener for editing notes
-        notesListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+    private void setupClickListeners() {
+        // Home tab click listener
+        tabHome.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                Note selectedNote = notesList.get(position);
-
-                // Open NoteActivity to edit the selected note
-                Intent intent = new Intent(HomeActivity.this, NoteActivity.class);
-                intent.putExtra("note", selectedNote);
-                startActivity(intent);
+            public void onClick(View v) {
+                loadHomeFragment();
+                updateTabSelection(0); // 0 for home
             }
         });
+
+        // Add tab click listener (center button)
+        tabAdd.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openNoteActivity();
+            }
+        });
+
+        // Floating add button click listener
+        floatingAdd.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openNoteActivity();
+            }
+        });
+
+        // Profile tab click listener
+        tabProfile.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                loadProfileFragment();
+                updateTabSelection(2); // 2 for profile
+            }
+        });
+    }
+
+    private void loadHomeFragment() {
+        if (homeFragment == null) {
+            homeFragment = new HomeFragment();
+        }
+
+        FragmentTransaction transaction = fragmentManager.beginTransaction();
+        transaction.replace(R.id.frame_layout, homeFragment);
+        transaction.commit();
+
+        // Ensure the fragment refreshes its data
+        fragmentManager.executePendingTransactions();
+        if (homeFragment.isAdded() && homeFragment.getView() != null) {
+            homeFragment.refreshNotes();
+        }
+    }
+
+    private void loadProfileFragment() {
+        if (profileFragment == null) {
+            profileFragment = new ProfileFragment();
+        }
+
+        FragmentTransaction transaction = fragmentManager.beginTransaction();
+        transaction.replace(R.id.frame_layout, profileFragment);
+        transaction.commit();
+    }
+
+    private void openNoteActivity() {
+        Intent intent = new Intent(HomeActivity.this, NoteActivity.class);
+        startActivity(intent);
+    }
+
+    private void updateTabSelection(int selectedTab) {
+        // Reset all tabs to default state
+        tabHome.setAlpha(0.6f);
+        tabProfile.setAlpha(0.6f);
+
+        // Highlight selected tab
+        switch (selectedTab) {
+            case 0: // Home
+                tabHome.setAlpha(1.0f);
+                break;
+            case 2: // Profile
+                tabProfile.setAlpha(1.0f);
+                break;
+        }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
 
-        // Check if user is still logged in (in case they logged out from profile)
+        // Check if user is still logged in (using PreferenceManager for login state)
         if (!preferenceManager.isLoggedIn()) {
             // Navigate back to MainActivity
             Intent intent = new Intent(HomeActivity.this, MainActivity.class);
@@ -83,29 +145,26 @@ public class HomeActivity extends AppCompatActivity {
             startActivity(intent);
             finish();
         } else {
-            // Refresh the notes list
-            loadNotes();
+            // Refresh current fragment if it's HomeFragment
+            Fragment currentFragment = fragmentManager.findFragmentById(R.id.frame_layout);
+            if (currentFragment instanceof HomeFragment) {
+                // Force refresh the home fragment
+                ((HomeFragment) currentFragment).refreshNotes();
+            }
         }
     }
 
-    private void loadNotes() {
-        // Get notes from PreferenceManager
-        notesList = preferenceManager.getNotes();
+    @Override
+    public void onBackPressed() {
+        Fragment currentFragment = fragmentManager.findFragmentById(R.id.frame_layout);
 
-        if (noteAdapter == null) {
-            // First time loading - create adapter
-            noteAdapter = new NoteAdapter(this, notesList);
-            notesListView.setAdapter(noteAdapter);
+        // If we're not on home fragment, go back to home
+        if (!(currentFragment instanceof HomeFragment)) {
+            loadHomeFragment();
+            updateTabSelection(0);
         } else {
-            // Update existing adapter
-            noteAdapter.updateNotes(notesList);
-        }
-
-        // Show empty state message if no notes
-        if (notesList.isEmpty()) {
-            tvNotes.setText("No Notes");
-        } else {
-            tvNotes.setText("Notes");
+            // If we're on home fragment, exit app
+            super.onBackPressed();
         }
     }
 }
