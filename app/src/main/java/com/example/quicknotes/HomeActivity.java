@@ -10,13 +10,14 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
+import com.google.firebase.auth.FirebaseAuth;
+
 public class HomeActivity extends AppCompatActivity {
 
-    private PreferenceManager preferenceManager;  // Only for login credentials
-    private LinearLayout tabHome, tabAdd, tabProfile, floatingAdd;
+    private LinearLayout tabHome, tabAdd, tabProfile;
+    private View floatingAdd; // Changed to View
     private FragmentManager fragmentManager;
 
-    // Fragment instances
     private HomeFragment homeFragment;
     private ProfileFragment profileFragment;
 
@@ -25,21 +26,13 @@ public class HomeActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
 
-        // Initialize preferences (only for login-related operations)
-        preferenceManager = new PreferenceManager(this);
-
-        // Initialize fragment manager
         fragmentManager = getSupportFragmentManager();
 
-        // Initialize views
         initializeViews();
-
-        // Setup click listeners
         setupClickListeners();
 
-        // Load default fragment (Home)
         if (savedInstanceState == null) {
-            loadHomeFragment();
+            loadFragment(getHomeFragment(), 0);
         }
     }
 
@@ -51,83 +44,50 @@ public class HomeActivity extends AppCompatActivity {
     }
 
     private void setupClickListeners() {
-        // Home tab click listener
-        tabHome.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                loadHomeFragment();
-                updateTabSelection(0); // 0 for home
-            }
-        });
-
-        // Add tab click listener (center button)
-        tabAdd.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                openNoteActivity();
-            }
-        });
-
-        // Floating add button click listener
-        floatingAdd.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                openNoteActivity();
-            }
-        });
-
-        // Profile tab click listener
-        tabProfile.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                loadProfileFragment();
-                updateTabSelection(2); // 2 for profile
-            }
-        });
+        tabHome.setOnClickListener(v -> loadFragment(getHomeFragment(), 0));
+        tabAdd.setOnClickListener(v -> openNoteActivity(null));
+        floatingAdd.setOnClickListener(v -> openNoteActivity(null));
+        tabProfile.setOnClickListener(v -> loadFragment(getProfileFragment(), 2));
     }
 
-    private void loadHomeFragment() {
+    private HomeFragment getHomeFragment() {
         if (homeFragment == null) {
             homeFragment = new HomeFragment();
         }
-
-        FragmentTransaction transaction = fragmentManager.beginTransaction();
-        transaction.replace(R.id.frame_layout, homeFragment);
-        transaction.commit();
-
-        // Ensure the fragment refreshes its data
-        fragmentManager.executePendingTransactions();
-        if (homeFragment.isAdded() && homeFragment.getView() != null) {
-            homeFragment.refreshNotes();
-        }
+        return homeFragment;
     }
 
-    private void loadProfileFragment() {
+    private ProfileFragment getProfileFragment() {
         if (profileFragment == null) {
             profileFragment = new ProfileFragment();
         }
-
-        FragmentTransaction transaction = fragmentManager.beginTransaction();
-        transaction.replace(R.id.frame_layout, profileFragment);
-        transaction.commit();
+        return profileFragment;
     }
 
-    private void openNoteActivity() {
+    private void loadFragment(Fragment fragment, int tabIndex) {
+        FragmentTransaction transaction = fragmentManager.beginTransaction();
+        transaction.replace(R.id.frame_layout, fragment);
+        transaction.commit();
+        updateTabSelection(tabIndex);
+    }
+
+    public void openNoteActivity(Note note) {
         Intent intent = new Intent(HomeActivity.this, NoteActivity.class);
+        if (note != null) {
+            intent.putExtra("note", note);
+        }
         startActivity(intent);
     }
 
     private void updateTabSelection(int selectedTab) {
-        // Reset all tabs to default state
         tabHome.setAlpha(0.6f);
         tabProfile.setAlpha(0.6f);
 
-        // Highlight selected tab
         switch (selectedTab) {
-            case 0: // Home
+            case 0:
                 tabHome.setAlpha(1.0f);
                 break;
-            case 2: // Profile
+            case 2:
                 tabProfile.setAlpha(1.0f);
                 break;
         }
@@ -136,19 +96,16 @@ public class HomeActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-
-        // Check if user is still logged in (using PreferenceManager for login state)
-        if (!preferenceManager.isLoggedIn()) {
-            // Navigate back to MainActivity
+        if (FirebaseAuth.getInstance().getCurrentUser() == null) {
+            // User signed out, go back to login screen
             Intent intent = new Intent(HomeActivity.this, MainActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
             finish();
         } else {
-            // Refresh current fragment if it's HomeFragment
+            // Refresh notes if home fragment is visible
             Fragment currentFragment = fragmentManager.findFragmentById(R.id.frame_layout);
             if (currentFragment instanceof HomeFragment) {
-                // Force refresh the home fragment
                 ((HomeFragment) currentFragment).refreshNotes();
             }
         }
@@ -157,13 +114,9 @@ public class HomeActivity extends AppCompatActivity {
     @Override
     public void onBackPressed() {
         Fragment currentFragment = fragmentManager.findFragmentById(R.id.frame_layout);
-
-        // If we're not on home fragment, go back to home
         if (!(currentFragment instanceof HomeFragment)) {
-            loadHomeFragment();
-            updateTabSelection(0);
+            loadFragment(getHomeFragment(), 0);
         } else {
-            // If we're on home fragment, exit app
             super.onBackPressed();
         }
     }

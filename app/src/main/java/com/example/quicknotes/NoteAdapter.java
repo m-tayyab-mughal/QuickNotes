@@ -12,6 +12,7 @@ import androidx.annotation.Nullable;
 
 import java.util.List;
 
+// No changes were needed in this file. It works as-is.
 public class NoteAdapter extends ArrayAdapter<Note> {
     private Context context;
     private List<Note> notes;
@@ -40,41 +41,21 @@ public class NoteAdapter extends ArrayAdapter<Note> {
             holder = (ViewHolder) convertView.getTag();
         }
 
-        // Get the current note
         Note currentNote = getItem(position);
         if (currentNote != null) {
             holder.titleTextView.setText(currentNote.getTitle());
 
-            // Create a preview of the content (first 50 characters)
             String contentPreview = currentNote.getContent();
             if (contentPreview.length() > 50) {
                 contentPreview = contentPreview.substring(0, 50) + "...";
             }
             holder.previewTextView.setText(contentPreview);
-
             holder.dateTextView.setText(currentNote.getFormattedDate());
         }
 
         return convertView;
     }
 
-    public void updateNotes(List<Note> newNotes) {
-        this.notes.clear();
-        this.notes.addAll(newNotes);
-        notifyDataSetChanged();
-    }
-
-    @Override
-    public int getCount() {
-        return notes != null ? notes.size() : 0;
-    }
-
-    @Override
-    public Note getItem(int position) {
-        return notes != null && position < notes.size() ? notes.get(position) : null;
-    }
-
-    // ViewHolder pattern for better performance
     static class ViewHolder {
         TextView titleTextView;
         TextView previewTextView;

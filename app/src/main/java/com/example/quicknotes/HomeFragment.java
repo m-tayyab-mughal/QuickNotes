@@ -1,126 +1,117 @@
 package com.example.quicknotes;
 
-import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+
+import java.util.ArrayList;
 import java.util.List;
 
 public class HomeFragment extends Fragment {
 
-    private TextView tvNotes;
-    private TextView noOfNotes; // Added for Noofnotes TextView
+    private TextView tvNotes, noOfNotes;
     private ListView notesListView;
     private NoteAdapter noteAdapter;
     private List<Note> notesList;
-    private NoteDatabaseHelper databaseHelper;
-
-    public HomeFragment() {
-        // Required empty public constructor
-    }
+    private FirebaseFirestore db;
+    private FirebaseAuth mAuth;
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-        // Inflate the layout for this fragment
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_home, container, false);
     }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-
-        // Initialize database helper
-        databaseHelper = new NoteDatabaseHelper(requireContext());
-
-        // Initialize views
+        db = FirebaseFirestore.getInstance();
+        mAuth = FirebaseAuth.getInstance();
         tvNotes = view.findViewById(R.id.tvNotes);
-        noOfNotes = view.findViewById(R.id.Noofnotes); // Initialize Noofnotes TextView
+        noOfNotes = view.findViewById(R.id.Noofnotes);
         notesListView = view.findViewById(R.id.notesListView);
 
-        // Load notes
-        loadNotes();
+        notesList = new ArrayList<>();
+        noteAdapter = new NoteAdapter(getContext(), notesList);
+        notesListView.setAdapter(noteAdapter);
 
-        // Set item click listener for editing notes
-        notesListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                Note selectedNote = notesList.get(position);
-
-                // Open NoteActivity to edit the selected note
-                Intent intent = new Intent(getActivity(), NoteActivity.class);
-                intent.putExtra("note", selectedNote);
-                startActivity(intent);
+        notesListView.setOnItemClickListener((parent, view1, position, id) -> {
+            Note selectedNote = notesList.get(position);
+            // Use the HomeActivity to launch the NoteActivity
+            if(getActivity() instanceof HomeActivity) {
+                ((HomeActivity)getActivity()).openNoteActivity(selectedNote);
             }
         });
+
+        loadNotes();
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        // Always refresh notes when fragment becomes visible
-        if (getView() != null) {
-            loadNotes();
-        }
-    }
-
-    @Override
-    public void setUserVisibleHint(boolean isVisibleToUser) {
-        super.setUserVisibleHint(isVisibleToUser);
-        // This method is called when fragment visibility changes in ViewPager/TabLayout
-        if (isVisibleToUser && isResumed() && getView() != null) {
-            loadNotes();
-        }
-    }
-
-    @Override
-    public void onHiddenChanged(boolean hidden) {
-        super.onHiddenChanged(hidden);
-        // This method is called when fragment is shown/hidden
-        if (!hidden && getView() != null) {
-            loadNotes();
-        }
+        // onResume is a good place to refresh data
+        refreshNotes();
     }
 
     public void loadNotes() {
-        // Get notes from database
-        notesList = databaseHelper.getAllNotes();
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser == null) {
+            Toast.makeText(getContext(), "User not logged in.", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
-        // Always recreate the adapter to ensure proper display
-        noteAdapter = new NoteAdapter(getContext(), notesList);
-        notesListView.setAdapter(noteAdapter);
+        String userId = currentUser.getUid();
 
-        // Show empty state message if no notes
+        db.collection("notes")
+                .whereEqualTo("userId", userId) // The most important line for security
+                .orderBy("timestamp", Query.Direction.DESCENDING)
+                .get()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful() && task.getResult() != null) {
+                        notesList.clear();
+                        for (QueryDocumentSnapshot document : task.getResult()) {
+                            Note note = document.toObject(Note.class);
+                            note.setId(document.getId());
+                            notesList.add(note);
+                        }
+                        noteAdapter.notifyDataSetChanged();
+                        updateUI();
+                    } else {
+                        Log.e("HomeFragment", "Error loading notes: ", task.getException());
+                        Toast.makeText(getContext(), "Failed to load notes.", Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    private void updateUI() {
         if (notesList.isEmpty()) {
             tvNotes.setText("No Notes");
-            noOfNotes.setText("0"); // Set count to 0
+            noOfNotes.setText("0");
             notesListView.setVisibility(View.GONE);
         } else {
-            tvNotes.setText("My Notes"); // Display just "My Notes"
-            noOfNotes.setText(String.valueOf(notesList.size())); // Set note count
+            tvNotes.setText("My Notes");
+            noOfNotes.setText(String.valueOf(notesList.size()));
             notesListView.setVisibility(View.VISIBLE);
         }
     }
 
-    // Method to refresh notes from outside the fragment
     public void refreshNotes() {
         if (isAdded() && getView() != null) {
             loadNotes();
         }
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        // No need to close database as NoteDatabaseHelper handles it
     }
 }

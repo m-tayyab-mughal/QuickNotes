@@ -1,6 +1,9 @@
 package com.example.quicknotes;
 
+import android.app.AlertDialog;
 import android.content.Intent;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
@@ -15,17 +18,17 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.material.textfield.TextInputEditText;
+import com.google.firebase.auth.FirebaseAuth;
 
 public class LoginFragment extends Fragment {
 
     private TextInputEditText etEmail, etPassword;
     private Button btnLogin;
     private TextView tvForgotPassword;
-    private PreferenceManager preferenceManager;
+    private FirebaseAuth mAuth;
 
-    public LoginFragment() {
-        // Required empty constructor
-    }
+    // --- CHANGE 1: Add AlertDialog for the custom dialog ---
+    private AlertDialog loadingDialog;
 
     public static LoginFragment newInstance() {
         return new LoginFragment();
@@ -34,7 +37,6 @@ public class LoginFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        // Inflate the layout for this fragment
         return inflater.inflate(R.layout.fragment_login, container, false);
     }
 
@@ -42,16 +44,16 @@ public class LoginFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // Initialize preference manager
-        preferenceManager = new PreferenceManager(requireContext());
+        mAuth = FirebaseAuth.getInstance();
 
-        // Initialize views
+        // --- CHANGE 2: Initialize the dialog ---
+        initLoadingDialog();
+
         etEmail = view.findViewById(R.id.Email);
         etPassword = view.findViewById(R.id.Password);
         btnLogin = view.findViewById(R.id.btnLogin);
         tvForgotPassword = view.findViewById(R.id.ForgotPassword);
 
-        // Set click listeners
         btnLogin.setOnClickListener(v -> {
             if (validateInputs()) {
                 loginUser();
@@ -59,69 +61,80 @@ public class LoginFragment extends Fragment {
         });
 
         tvForgotPassword.setOnClickListener(v -> {
-            // Navigate to ForgotPasswordFragment
             if (getActivity() != null) {
-                ForgotPasswordFragment forgotPasswordFragment = com.example.quicknotes.ForgotPasswordFragment.newInstance();
                 getActivity().getSupportFragmentManager()
                         .beginTransaction()
-                        .replace(R.id.fragment_container, forgotPasswordFragment)
-                        .addToBackStack(null)  // Allows back navigation
+                        .replace(R.id.fragment_container, new ForgotPasswordFragment())
+                        .addToBackStack(null)
                         .commit();
             }
         });
     }
 
-    private boolean validateInputs() {
-        boolean isValid = true;
-        String email = etEmail.getText().toString().trim();
-        String password = etPassword.getText().toString().trim();
+    // --- CHANGE 3: Add this new method to build the dialog ---
+    private void initLoadingDialog() {
+        if (getContext() == null) return;
+        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+        LayoutInflater inflater = requireActivity().getLayoutInflater();
+        builder.setView(inflater.inflate(R.layout.dialog_loading, null));
+        builder.setCancelable(false);
+        loadingDialog = builder.create();
+        if (loadingDialog.getWindow() != null) {
+            loadingDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+    }
 
-        // Email validation
-        if (TextUtils.isEmpty(email)) {
+    private boolean validateInputs() {
+        if (TextUtils.isEmpty(etEmail.getText().toString().trim())) {
             etEmail.setError("Email is required");
             etEmail.requestFocus();
-            isValid = false;
+            return false;
         }
-
-        // Password validation
-        if (TextUtils.isEmpty(password)) {
+        if (TextUtils.isEmpty(etPassword.getText().toString().trim())) {
             etPassword.setError("Password is required");
-            if (isValid) etPassword.requestFocus();
-            isValid = false;
+            etPassword.requestFocus();
+            return false;
         }
-
-        return isValid;
+        return true;
     }
 
     private void loginUser() {
-        // Show loading state
-        btnLogin.setEnabled(false);
-        btnLogin.setText("Logging in...");
-
         String email = etEmail.getText().toString().trim();
         String password = etPassword.getText().toString().trim();
 
-        // Simulate network delay
-        btnLogin.postDelayed(() -> {
-            // Check if credentials match what's in SharedPreferences
-            String storedEmail = preferenceManager.getUserEmail();
-            String storedPassword = preferenceManager.getUserPassword();
+        // --- CHANGE 4: Show the custom dialog instead of disabling the button ---
+        showLoadingDialog("Logging in...");
 
-            if (email.equals(storedEmail) && password.equals(storedPassword)) {
-                // Set login status
-                preferenceManager.setLoggedIn(true);
+        mAuth.signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener(getActivity(), task -> {
+                    // --- CHANGE 5: Hide the dialog when the task is complete ---
+                    hideLoadingDialog();
+                    if (task.isSuccessful()) {
+                        Intent intent = new Intent(getActivity(), HomeActivity.class);
+                        startActivity(intent);
+                        if (getActivity() != null) {
+                            getActivity().finish();
+                        }
+                    } else {
+                        Toast.makeText(getContext(), "Authentication failed: " + task.getException().getMessage(), Toast.LENGTH_LONG).show();
+                    }
+                });
+    }
 
-                // Navigate to HomeActivity
-                Intent intent = new Intent(getActivity(), HomeActivity.class);
-                startActivity(intent);
-                if (getActivity() != null) {
-                    getActivity().finish(); // Close MainActivity
-                }
-            } else {
-                Toast.makeText(getContext(), "Invalid email or password", Toast.LENGTH_SHORT).show();
-                btnLogin.setEnabled(true);
-                btnLogin.setText("Login");
+    // --- CHANGE 6: Add helper methods to control the dialog ---
+    private void showLoadingDialog(String message) {
+        if (loadingDialog != null) {
+            loadingDialog.show();
+            TextView tvMessage = loadingDialog.findViewById(R.id.tv_loading_message);
+            if (tvMessage != null) {
+                tvMessage.setText(message);
             }
-        }, 1500);
+        }
+    }
+
+    private void hideLoadingDialog() {
+        if (loadingDialog != null && loadingDialog.isShowing()) {
+            loadingDialog.dismiss();
+        }
     }
 }
