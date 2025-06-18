@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.LinearLayout;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
@@ -15,11 +16,14 @@ import com.google.firebase.auth.FirebaseAuth;
 public class HomeActivity extends AppCompatActivity {
 
     private LinearLayout tabHome, tabAdd, tabProfile;
-    private View floatingAdd; // Changed to View
+    private View floatingAdd;
     private FragmentManager fragmentManager;
 
     private HomeFragment homeFragment;
     private ProfileFragment profileFragment;
+
+    // Network status ke liye
+    private ConnectionLiveData connectionLiveData;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,10 +33,11 @@ public class HomeActivity extends AppCompatActivity {
         fragmentManager = getSupportFragmentManager();
 
         initializeViews();
-        setupClickListeners();
+        setupClickListeners(); // Yeh method ab maujood hai
+        setupNetworkObserver(); // Network status ke liye
 
         if (savedInstanceState == null) {
-            loadFragment(getHomeFragment(), 0);
+            loadFragment(getHomeFragment(), 0); // Yeh method ab maujood hai
         }
     }
 
@@ -43,6 +48,7 @@ public class HomeActivity extends AppCompatActivity {
         floatingAdd = findViewById(R.id.floating_add);
     }
 
+    // --- YEH MISSING METHOD THA ---
     private void setupClickListeners() {
         tabHome.setOnClickListener(v -> loadFragment(getHomeFragment(), 0));
         tabAdd.setOnClickListener(v -> openNoteActivity(null));
@@ -50,6 +56,21 @@ public class HomeActivity extends AppCompatActivity {
         tabProfile.setOnClickListener(v -> loadFragment(getProfileFragment(), 2));
     }
 
+    // --- NETWORK STATUS OBSERVER ---
+    private void setupNetworkObserver() {
+        connectionLiveData = new ConnectionLiveData(this);
+        connectionLiveData.observe(this, status -> {
+            if (status != null) {
+                Toast.makeText(this, status, Toast.LENGTH_SHORT).show();
+                if (status.startsWith("Online")) {
+                    NoteRepository noteRepository = new NoteRepository(getApplication());
+                    noteRepository.startSync();
+                }
+            }
+        });
+    }
+
+    // --- YEH SAB MISSING METHODS THE ---
     private HomeFragment getHomeFragment() {
         if (homeFragment == null) {
             homeFragment = new HomeFragment();
@@ -97,16 +118,15 @@ public class HomeActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         if (FirebaseAuth.getInstance().getCurrentUser() == null) {
-            // User signed out, go back to login screen
             Intent intent = new Intent(HomeActivity.this, MainActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
             finish();
         } else {
-            // Refresh notes if home fragment is visible
             Fragment currentFragment = fragmentManager.findFragmentById(R.id.frame_layout);
             if (currentFragment instanceof HomeFragment) {
-                ((HomeFragment) currentFragment).refreshNotes();
+                // HomeFragment ab LiveData istemal kar raha hai, to iski zaroorat shayad na ho
+                // lekin behtar hai ke rakhein
             }
         }
     }

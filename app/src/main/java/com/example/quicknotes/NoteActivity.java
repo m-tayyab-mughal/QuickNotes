@@ -5,9 +5,9 @@ import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -15,22 +15,13 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.FirebaseFirestore;
-
 public class NoteActivity extends AppCompatActivity {
-
-    private static final String TAG = "NoteActivity";
 
     private EditText editTextTitle, editTextContent;
     private ImageView backButton, saveButton, deleteButton;
     private TextView toolbarTitle;
 
-    private FirebaseFirestore db;
-    private FirebaseAuth mAuth;
-
-    // --- CHANGE 1: Remove ProgressDialog, add AlertDialog ---
+    private NoteRepository noteRepository; // Repository ka istemal
     private AlertDialog loadingDialog;
 
     private Note existingNote;
@@ -41,10 +32,8 @@ public class NoteActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_note);
 
-        db = FirebaseFirestore.getInstance();
-        mAuth = FirebaseAuth.getInstance();
+        noteRepository = new NoteRepository(getApplication()); // Repository initialize karein
 
-        // --- CHANGE 2: Call the method to create our new dialog ---
         initLoadingDialog();
 
         editTextTitle = findViewById(R.id.editTextTitle);
@@ -71,7 +60,6 @@ public class NoteActivity extends AppCompatActivity {
         deleteButton.setOnClickListener(v -> confirmDelete());
     }
 
-    // --- CHANGE 3: This new method builds the dialog from your custom layout ---
     private void initLoadingDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         LayoutInflater inflater = this.getLayoutInflater();
@@ -79,7 +67,6 @@ public class NoteActivity extends AppCompatActivity {
         builder.setCancelable(false);
         loadingDialog = builder.create();
         if (loadingDialog.getWindow() != null) {
-            // This makes the dialog's background transparent so only the CardView is visible
             loadingDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         }
     }
@@ -93,17 +80,7 @@ public class NoteActivity extends AppCompatActivity {
             return;
         }
 
-        // --- CHANGE 4: Show the custom dialog with a "Saving..." message ---
         showLoadingDialog("Saving...");
-
-        FirebaseUser currentUser = mAuth.getCurrentUser();
-        if (currentUser == null) {
-            hideLoadingDialog();
-            Toast.makeText(this, "Error: User is not logged in.", Toast.LENGTH_SHORT).show();
-            Log.e(TAG, "Cannot save note, user is null.");
-            return;
-        }
-        String currentUserId = currentUser.getUid();
 
         Note noteToSave;
 
@@ -112,56 +89,59 @@ public class NoteActivity extends AppCompatActivity {
             noteToSave.setTitle(title);
             noteToSave.setContent(content);
         } else {
-            noteToSave = new Note(title, content);
+            noteToSave = new Note();
+            noteToSave.setTitle(title);
+            noteToSave.setContent(content);
         }
-        noteToSave.setUserId(currentUserId);
 
-        db.collection("notes").document(noteToSave.getId())
-                .set(noteToSave)
-                .addOnSuccessListener(aVoid -> {
-                    hideLoadingDialog();
-                    Toast.makeText(this, "Note saved successfully!", Toast.LENGTH_SHORT).show();
-                    finish();
-                })
-                .addOnFailureListener(e -> {
-                    hideLoadingDialog();
-                    Toast.makeText(this, "Failed to save note: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                    Log.e(TAG, "Error saving note to Firestore", e);
-                });
+        noteRepository.insertOrUpdateNote(noteToSave);
+
+        // Repository background mein kaam karega, hum UI foran band kar sakte hain
+        hideLoadingDialog();
+        Toast.makeText(this, "Note saved.", Toast.LENGTH_SHORT).show();
+        finish();
     }
 
+    // --- YEH METHOD UPDATE KIYA GAYA HAI ---
+    // Ab yeh default dialog ki jagah custom dialog istemal karega
     private void confirmDelete() {
-        new AlertDialog.Builder(this)
-                .setTitle("Delete Note")
-                .setMessage("Are you sure you want to delete this note?")
-                .setPositiveButton("Delete", (dialog, which) -> deleteNote())
-                .setNegativeButton("Cancel", null)
-                .show();
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        LayoutInflater inflater = this.getLayoutInflater();
+        View dialogView = inflater.inflate(R.layout.dialog_confirm_delete, null);
+        builder.setView(dialogView);
+
+        final AlertDialog dialog = builder.create();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        Button btnCancel = dialogView.findViewById(R.id.btnDialogCancel);
+        Button btnDelete = dialogView.findViewById(R.id.btnDialogDelete);
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+
+        btnDelete.setOnClickListener(v -> {
+            deleteNote();
+            dialog.dismiss();
+        });
+
+        dialog.show();
     }
 
     private void deleteNote() {
         if (existingNote != null) {
-            // --- CHANGE 5: Show the custom dialog for deleting too ---
             showLoadingDialog("Deleting...");
-            db.collection("notes").document(existingNote.getId()).delete()
-                    .addOnSuccessListener(aVoid -> {
-                        hideLoadingDialog();
-                        Toast.makeText(this, "Note deleted.", Toast.LENGTH_SHORT).show();
-                        finish();
-                    })
-                    .addOnFailureListener(e -> {
-                        hideLoadingDialog();
-                        Toast.makeText(this, "Failed to delete note.", Toast.LENGTH_SHORT).show();
-                        Log.e(TAG, "Error deleting note", e);
-                    });
+            noteRepository.deleteNote(existingNote);
+            hideLoadingDialog();
+            Toast.makeText(this, "Note deleted.", Toast.LENGTH_SHORT).show();
+            finish();
         }
     }
 
-    // --- CHANGE 6: Helper methods to control the dialog ---
     private void showLoadingDialog(String message) {
         if (loadingDialog != null) {
             loadingDialog.show();
-            // Find the TextView inside the dialog to set the message dynamically
             TextView tvMessage = loadingDialog.findViewById(R.id.tv_loading_message);
             if (tvMessage != null) {
                 tvMessage.setText(message);

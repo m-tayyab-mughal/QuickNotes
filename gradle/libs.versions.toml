@@ -11,6 +11,9 @@ gson = "2.10.1"
 googleGmsServices = "4.4.2"
 firebaseFirestore = "25.1.4"
 firebaseAuth = "23.2.1"
+workRuntime = "2.9.0"
+room = "2.6.1"
+guavaListenableFuture = "9999.0-empty-to-avoid-conflict-with-guava"
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -23,6 +26,11 @@ constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayo
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore", version.ref = "firebaseFirestore" }
 firebase-auth = { group = "com.google.firebase", name = "firebase-auth", version.ref = "firebaseAuth" }
+work-runtime = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workRuntime" }
+room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+guava-listenablefuture = { group = "com.google.guava", name = "listenablefuture", version.ref = "guavaListenableFuture" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
