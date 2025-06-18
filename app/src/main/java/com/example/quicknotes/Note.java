@@ -9,26 +9,25 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
-@Entity(tableName = "notes") // Room ke liye zaroori
+@Entity(tableName = "notes")
 public class Note implements Serializable {
 
-    @PrimaryKey // Room ke liye zaroori
+    @PrimaryKey
     @NonNull
     private String id;
-
     private String title;
     private String content;
     private String userId;
-
     @ServerTimestamp
     private Date timestamp;
-
-    // Offline sync ke liye extra fields
     private long lastModified;
     private boolean isSynced;
 
+    // New field for reminder time
+    private Long reminderTime = null;
+
     public Note() {
-        // Firestore ke liye khaali constructor zaroori hai
+        // Required empty constructor
     }
 
     // Getters
@@ -40,6 +39,7 @@ public class Note implements Serializable {
     public Date getTimestamp() { return timestamp; }
     public long getLastModified() { return lastModified; }
     public boolean isSynced() { return isSynced; }
+    public Long getReminderTime() { return reminderTime; }
 
     // Setters
     public void setId(@NonNull String id) { this.id = id; }
@@ -49,8 +49,8 @@ public class Note implements Serializable {
     public void setTimestamp(Date timestamp) { this.timestamp = timestamp; }
     public void setLastModified(long lastModified) { this.lastModified = lastModified; }
     public void setSynced(boolean synced) { isSynced = synced; }
+    public void setReminderTime(Long reminderTime) { this.reminderTime = reminderTime; }
 
-    // Helper method
     public String getFormattedDate() {
         Date dateToShow = (timestamp != null) ? timestamp : new Date(lastModified);
         SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());

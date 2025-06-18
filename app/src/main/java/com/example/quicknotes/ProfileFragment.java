@@ -130,7 +130,20 @@ public class ProfileFragment extends Fragment {
 
         final EditText etCurrentPassword = dialogView.findViewById(R.id.etCurrentPassword);
         Button btnVerify = dialogView.findViewById(R.id.btnVerify);
-        AlertDialog dialog = builder.create();
+        // === CHANGE 1: Cancel button ko find karein ===
+        Button btnCancel = dialogView.findViewById(R.id.btnCancelAuth);
+
+        final AlertDialog dialog = builder.create();
+
+        // Dialog ka background transparent karein taaki CardView ke corners nazar aayein
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        // === CHANGE 2: Cancel button ke liye click listener set karein ===
+        btnCancel.setOnClickListener(v -> {
+            dialog.dismiss(); // Sirf dialog ko band kar dein
+        });
 
         btnVerify.setOnClickListener(v -> {
             String password = etCurrentPassword.getText().toString().trim();
@@ -141,7 +154,6 @@ public class ProfileFragment extends Fragment {
 
             FirebaseUser user = mAuth.getCurrentUser();
             if (user != null && user.getEmail() != null) {
-                // --- CHANGE 4: Use the new custom dialog ---
                 showLoadingDialog("Verifying...");
                 AuthCredential credential = EmailAuthProvider.getCredential(user.getEmail(), password);
                 user.reauthenticate(credential).addOnCompleteListener(task -> {
@@ -162,6 +174,7 @@ public class ProfileFragment extends Fragment {
                 Toast.makeText(getContext(), "Cannot verify. User not found.", Toast.LENGTH_SHORT).show();
             }
         });
+
         dialog.show();
     }
 

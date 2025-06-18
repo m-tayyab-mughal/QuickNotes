@@ -37,14 +37,29 @@
             android:textColor="#B3FFFFFF"
             android:textSize="14sp" />
 
-        <TextView
-            android:id="@+id/noteDateText"
-            android:layout_width="wrap_content"
+        <RelativeLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="end"
-            android:layout_marginTop="8dp"
-            android:text="May 20, 2023"
-            android:textColor="#80FFFFFF"
-            android:textSize="12sp" />
+            android:layout_marginTop="8dp">
+
+            <TextView
+                android:id="@+id/noteDateText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:text="May 20, 2023"
+                android:textColor="#80FFFFFF"
+                android:textSize="12sp" />
+
+            <ImageView
+                android:id="@+id/bellIcon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:src="@drawable/ic_bell"
+                app:tint="#FFC107" />
+        </RelativeLayout>
     </LinearLayout>
 </androidx.cardview.widget.CardView>
