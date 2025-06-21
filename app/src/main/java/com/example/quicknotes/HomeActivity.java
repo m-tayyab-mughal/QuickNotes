@@ -3,6 +3,7 @@ package com.example.quicknotes;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.LinearLayout;
@@ -18,10 +19,17 @@ import androidx.fragment.app.FragmentTransaction;
 
 import com.google.firebase.auth.FirebaseAuth;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class HomeActivity extends AppCompatActivity {
 
-    // --- NEW: A constant code to identify our location permission request ---
-    private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
+    // --- MODIFIED: A constant code to identify our multiple permissions request ---
+    private static final int PERMISSIONS_REQUEST_CODE = 1001;
+
+    // --- NEW: Define the notification permission ---
+    // Note: This is for Android 13 (API 33) and above.
+    private static final String NOTIFICATION_PERMISSION = Manifest.permission.POST_NOTIFICATIONS;
 
     private LinearLayout tabHome, tabAdd, tabProfile;
     private View floatingAdd;
@@ -38,8 +46,8 @@ public class HomeActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
 
-        // --- NEW: Check for permissions as soon as the app's main screen loads ---
-        checkAndRequestLocationPermissions();
+        // --- MODIFIED: Check for permissions as soon as the app's main screen loads ---
+        checkAndRequestPermissions();
 
         fragmentManager = getSupportFragmentManager();
 
@@ -52,34 +60,60 @@ public class HomeActivity extends AppCompatActivity {
         }
     }
 
-    // --- NEW METHOD TO CHECK AND REQUEST PERMISSIONS ---
-    private void checkAndRequestLocationPermissions() {
-        // Check if location permissions are already granted
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+    // --- MODIFIED METHOD TO CHECK AND REQUEST PERMISSIONS ---
+    private void checkAndRequestPermissions() {
+        // Create a list to hold the permissions we need to request.
+        List<String> permissionsToRequest = new ArrayList<>();
 
-            // If permissions are not granted, request them from the user
+        // 1. Check for Location Permissions
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            permissionsToRequest.add(Manifest.permission.ACCESS_FINE_LOCATION);
+            permissionsToRequest.add(Manifest.permission.ACCESS_COARSE_LOCATION);
+        }
+
+        // 2. Check for Notification Permission (only for Android 13 and higher)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, NOTIFICATION_PERMISSION) != PackageManager.PERMISSION_GRANTED) {
+                permissionsToRequest.add(NOTIFICATION_PERMISSION);
+            }
+        }
+
+        // If the list is not empty, it means we need to request one or more permissions.
+        if (!permissionsToRequest.isEmpty()) {
             ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
-                    LOCATION_PERMISSION_REQUEST_CODE);
+                    permissionsToRequest.toArray(new String[0]),
+                    PERMISSIONS_REQUEST_CODE);
         }
     }
 
-    // --- NEW METHOD TO HANDLE THE RESULT OF THE PERMISSION REQUEST ---
+    // --- MODIFIED METHOD TO HANDLE THE RESULT OF THE PERMISSION REQUEST ---
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
-            // Check if the permission was granted by the user
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Permission was granted
-                Toast.makeText(this, "Location permission granted.", Toast.LENGTH_SHORT).show();
-            } else {
-                // Permission was denied
-                Toast.makeText(this, "Location permission denied. Note location features will be unavailable.", Toast.LENGTH_LONG).show();
+        if (requestCode == PERMISSIONS_REQUEST_CODE) {
+            // Loop through all the permissions that were requested
+            for (int i = 0; i < permissions.length; i++) {
+                String permission = permissions[i];
+                int grantResult = grantResults[i];
+
+                if (Manifest.permission.ACCESS_FINE_LOCATION.equals(permission)) {
+                    if (grantResult == PackageManager.PERMISSION_GRANTED) {
+                        Toast.makeText(this, "Location permission granted.", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(this, "Location permission denied. Location features will be unavailable.", Toast.LENGTH_LONG).show();
+                    }
+                } else if (NOTIFICATION_PERMISSION.equals(permission)) {
+                    if (grantResult == PackageManager.PERMISSION_GRANTED) {
+                        Toast.makeText(this, "Notification permission granted.", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(this, "Notification permission denied. You may miss important updates.", Toast.LENGTH_LONG).show();
+                    }
+                }
             }
         }
     }
+
 
     private void initializeViews() {
         tabHome = findViewById(R.id.tab_home);

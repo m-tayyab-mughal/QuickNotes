@@ -2,9 +2,11 @@ package com.example.quicknotes;
 
 import android.Manifest;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
+import android.location.LocationManager;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
@@ -22,6 +24,8 @@ import androidx.core.app.ActivityCompat;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
+import com.google.android.gms.tasks.CancellationTokenSource;
 
 import java.util.Locale;
 
@@ -31,7 +35,6 @@ public class NoteActivity extends AppCompatActivity {
     private ImageView backButton, saveButton, deleteButton;
     private TextView toolbarTitle;
 
-    // --- NEW: UI elements for location details ---
     private CardView locationDetailsCard;
     private TextView locationDetailsText;
 
@@ -60,7 +63,6 @@ public class NoteActivity extends AppCompatActivity {
         deleteButton = findViewById(R.id.deleteButton);
         toolbarTitle = findViewById(R.id.toolbarTitle);
 
-        // --- NEW: Initialize location detail views ---
         locationDetailsCard = findViewById(R.id.locationDetailsCard);
         locationDetailsText = findViewById(R.id.locationDetailsText);
 
@@ -75,7 +77,6 @@ public class NoteActivity extends AppCompatActivity {
                 toolbarTitle.setText("Edit Note");
                 deleteButton.setVisibility(View.VISIBLE);
 
-                // --- NEW: Display location details if they exist ---
                 if (existingNote.getLatitude() != null && existingNote.getLongitude() != null) {
                     String locationName = existingNote.getLocationName() != null ? existingNote.getLocationName() : "Saved Location";
                     String details = String.format(Locale.US, "%s (Lat: %.2f, Lon: %.2f)",
@@ -104,6 +105,7 @@ public class NoteActivity extends AppCompatActivity {
         }
     }
 
+    // --- SAVE NOTE METHOD HAS BEEN FULLY UPDATED ---
     private void saveNote() {
         String title = editTextTitle.getText().toString().trim();
         String content = editTextContent.getText().toString().trim();
@@ -126,23 +128,39 @@ public class NoteActivity extends AppCompatActivity {
             noteToSave.setContent(content);
         }
 
+        // --- NEW: Check if device location setting is enabled ---
+        LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        if (!lm.isProviderEnabled(LocationManager.GPS_PROVIDER) && !lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+            Toast.makeText(this, "Location is off. Saving note without location.", Toast.LENGTH_LONG).show();
+            noteRepository.insertOrUpdateNote(noteToSave, null);
+            hideLoadingDialog();
+            finish();
+            return; // Stop here if location is off
+        }
+
+        // Check for app-level permissions
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             Toast.makeText(this, "Location permission not granted. Saving without location.", Toast.LENGTH_LONG).show();
             noteRepository.insertOrUpdateNote(noteToSave, null);
             hideLoadingDialog();
             finish();
-            return;
+            return; // Stop here if permissions are not granted
         }
 
-        fusedLocationProviderClient.getLastLocation()
+        // --- NEW: Fetching CURRENT location instead of last known location ---
+        CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+        fusedLocationProviderClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cancellationTokenSource.getToken())
                 .addOnSuccessListener(this, location -> {
+                    // This listener is called when a fresh location is successfully fetched.
+                    // 'location' can still be null if a fix could not be obtained.
                     noteRepository.insertOrUpdateNote(noteToSave, location);
                     hideLoadingDialog();
                     Toast.makeText(this, "Note saved.", Toast.LENGTH_SHORT).show();
                     finish();
                 })
                 .addOnFailureListener(this, e -> {
-                    Log.e("NoteActivity", "Failed to get location.", e);
+                    Log.e("NoteActivity", "Failed to get current location.", e);
+                    // If fetching the current location fails (e.g., no signal), save without location.
                     noteRepository.insertOrUpdateNote(noteToSave, null);
                     hideLoadingDialog();
                     Toast.makeText(this, "Note saved, but location could not be determined.", Toast.LENGTH_LONG).show();
