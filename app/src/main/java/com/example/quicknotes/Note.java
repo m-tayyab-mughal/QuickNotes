@@ -22,9 +22,13 @@ public class Note implements Serializable {
     private Date timestamp;
     private long lastModified;
     private boolean isSynced;
-
-    // New field for reminder time
     private Long reminderTime = null;
+
+    // --- NEW LOCATION FIELDS ---
+    private Double latitude;
+    private Double longitude;
+    private String locationName;
+
 
     public Note() {
         // Required empty constructor
@@ -40,6 +44,10 @@ public class Note implements Serializable {
     public long getLastModified() { return lastModified; }
     public boolean isSynced() { return isSynced; }
     public Long getReminderTime() { return reminderTime; }
+    public Double getLatitude() { return latitude; }
+    public Double getLongitude() { return longitude; }
+    public String getLocationName() { return locationName; }
+
 
     // Setters
     public void setId(@NonNull String id) { this.id = id; }
@@ -50,6 +58,10 @@ public class Note implements Serializable {
     public void setLastModified(long lastModified) { this.lastModified = lastModified; }
     public void setSynced(boolean synced) { isSynced = synced; }
     public void setReminderTime(Long reminderTime) { this.reminderTime = reminderTime; }
+    public void setLatitude(Double latitude) { this.latitude = latitude; }
+    public void setLongitude(Double longitude) { this.longitude = longitude; }
+    public void setLocationName(String locationName) { this.locationName = locationName; }
+
 
     public String getFormattedDate() {
         Date dateToShow = (timestamp != null) ? timestamp : new Date(lastModified);

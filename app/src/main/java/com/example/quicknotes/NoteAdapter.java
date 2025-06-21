@@ -15,12 +15,14 @@ import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
@@ -52,10 +54,22 @@ public class NoteAdapter extends ArrayAdapter<Note> {
         Note currentNote = getItem(position);
         ImageView bellIcon = convertView.findViewById(R.id.bellIcon);
 
+        // --- NEW: Get references to location UI elements ---
+        LinearLayout locationContainer = convertView.findViewById(R.id.locationContainer);
+        TextView noteLocationText = convertView.findViewById(R.id.noteLocationText);
+
         if (currentNote != null) {
             ((TextView) convertView.findViewById(R.id.noteTitleText)).setText(currentNote.getTitle());
             ((TextView) convertView.findViewById(R.id.notePreviewText)).setText(currentNote.getContent());
             ((TextView) convertView.findViewById(R.id.noteDateText)).setText(currentNote.getFormattedDate());
+
+            // --- NEW: Logic to show or hide location ---
+            if (currentNote.getLocationName() != null && !TextUtils.isEmpty(currentNote.getLocationName())) {
+                noteLocationText.setText(currentNote.getLocationName());
+                locationContainer.setVisibility(View.VISIBLE);
+            } else {
+                locationContainer.setVisibility(View.GONE);
+            }
 
             updateBellIconColor(bellIcon, currentNote);
             bellIcon.setOnClickListener(v -> handleBellIconClick(currentNote, bellIcon));
@@ -68,65 +82,50 @@ public class NoteAdapter extends ArrayAdapter<Note> {
         if (note.getReminderTime() != null && note.getReminderTime() > System.currentTimeMillis()) {
             bellIcon.setColorFilter(Color.parseColor("#FFC107")); // Yellow for active reminder
         } else {
-            bellIcon.setColorFilter(Color.parseColor("#FF5252")); // Red for no reminder
+            bellIcon.setColorFilter(Color.parseColor("#FF5252")); // Red for no reminder or past
         }
     }
 
     private void handleBellIconClick(Note note, ImageView bellIcon) {
         if (note.getReminderTime() != null && note.getReminderTime() > System.currentTimeMillis()) {
-            // Purana default dialog hata kar naya custom dialog show karein
             showCancelReminderDialog(note, bellIcon);
         } else {
             checkPermissionsAndShowDateTimePicker(note, bellIcon);
         }
     }
 
-    // === YEH NAYA METHOD HAI CUSTOM DIALOG KE LIYE ===
     private void showCancelReminderDialog(Note note, ImageView bellIcon) {
-        // Builder banayein
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-        // Custom layout ko inflate (load) karein
         LayoutInflater inflater = LayoutInflater.from(getContext());
         View dialogView = inflater.inflate(R.layout.dialog_confirm_delete, null);
         builder.setView(dialogView);
 
-        // Dialog banayein
         final AlertDialog dialog = builder.create();
 
-        // Dialog ke andar ke views (TextViews, Buttons) ko find karein
         TextView dialogTitle = dialogView.findViewById(R.id.tvDialogTitle);
         TextView dialogMessage = dialogView.findViewById(R.id.tvDialogMessage);
         Button btnCancel = dialogView.findViewById(R.id.btnDialogCancel);
-        Button btnConfirm = dialogView.findViewById(R.id.btnDialogDelete); // Is button ko hum "Confirm" banayenge
+        Button btnConfirm = dialogView.findViewById(R.id.btnDialogDelete);
 
-        // Title, message, aur buttons ka text badlein
         dialogTitle.setText("Cancel Reminder");
         dialogMessage.setText("Are you sure you want to cancel the reminder for this note?");
         btnConfirm.setText("Yes");
 
-        // "Yes, Cancel" button ka rang red se blue kar dein taaki woh "delete" jaisa na lage
-        // Note: backgroundTint ko MaterialButton ke zariye badalna behtar hai
         if (btnConfirm instanceof MaterialButton) {
-            ((MaterialButton) btnConfirm).setBackgroundColor(Color.parseColor("#4285F4")); // Google Blue
+            ((MaterialButton) btnConfirm).setBackgroundColor(Color.parseColor("#4285F4"));
         }
 
-        // Buttons ke click listeners set karein
         btnCancel.setOnClickListener(v -> dialog.dismiss());
-
         btnConfirm.setOnClickListener(v -> {
-            cancelNotification(note, bellIcon); // Reminder cancel karne wala function call karein
-            dialog.dismiss(); // Dialog band kar dein
+            cancelNotification(note, bellIcon);
+            dialog.dismiss();
         });
 
-        // Dialog ka background transparent karein taaki CardView ke rounded corners nazar aayein
         if (dialog.getWindow() != null) {
             dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         }
-
-        // Dialog ko show karein
         dialog.show();
     }
-
 
     private void checkPermissionsAndShowDateTimePicker(Note note, ImageView bellIcon) {
         AlarmManager alarmManager = (AlarmManager) getContext().getSystemService(Context.ALARM_SERVICE);
@@ -151,10 +150,8 @@ public class NoteAdapter extends ArrayAdapter<Note> {
             if (ContextCompat.checkSelfPermission(getContext(), Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions((Activity) getContext(), new String[]{Manifest.permission.POST_NOTIFICATIONS}, NOTIFICATION_PERMISSION_CODE);
                 return;
-
             }
         }
-
         showDateTimePicker(note, bellIcon);
     }
 
@@ -205,7 +202,6 @@ public class NoteAdapter extends ArrayAdapter<Note> {
         note.setReminderTime(null);
         noteRepository.insertOrUpdateNote(note);
         updateBellIconColor(bellIcon, note);
-
         Toast.makeText(getContext(), "Reminder canceled.", Toast.LENGTH_SHORT).show();
     }
 }

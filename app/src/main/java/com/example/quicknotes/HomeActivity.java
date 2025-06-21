@@ -1,12 +1,17 @@
 package com.example.quicknotes;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
@@ -14,6 +19,9 @@ import androidx.fragment.app.FragmentTransaction;
 import com.google.firebase.auth.FirebaseAuth;
 
 public class HomeActivity extends AppCompatActivity {
+
+    // --- NEW: A constant code to identify our location permission request ---
+    private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
 
     private LinearLayout tabHome, tabAdd, tabProfile;
     private View floatingAdd;
@@ -30,14 +38,46 @@ public class HomeActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
 
+        // --- NEW: Check for permissions as soon as the app's main screen loads ---
+        checkAndRequestLocationPermissions();
+
         fragmentManager = getSupportFragmentManager();
 
         initializeViews();
-        setupClickListeners(); // Yeh method ab maujood hai
-        setupNetworkObserver(); // Network status ke liye
+        setupClickListeners();
+        setupNetworkObserver();
 
         if (savedInstanceState == null) {
-            loadFragment(getHomeFragment(), 0); // Yeh method ab maujood hai
+            loadFragment(getHomeFragment(), 0);
+        }
+    }
+
+    // --- NEW METHOD TO CHECK AND REQUEST PERMISSIONS ---
+    private void checkAndRequestLocationPermissions() {
+        // Check if location permissions are already granted
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
+            // If permissions are not granted, request them from the user
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
+                    LOCATION_PERMISSION_REQUEST_CODE);
+        }
+    }
+
+    // --- NEW METHOD TO HANDLE THE RESULT OF THE PERMISSION REQUEST ---
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            // Check if the permission was granted by the user
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Permission was granted
+                Toast.makeText(this, "Location permission granted.", Toast.LENGTH_SHORT).show();
+            } else {
+                // Permission was denied
+                Toast.makeText(this, "Location permission denied. Note location features will be unavailable.", Toast.LENGTH_LONG).show();
+            }
         }
     }
 
@@ -48,7 +88,6 @@ public class HomeActivity extends AppCompatActivity {
         floatingAdd = findViewById(R.id.floating_add);
     }
 
-    // --- YEH MISSING METHOD THA ---
     private void setupClickListeners() {
         tabHome.setOnClickListener(v -> loadFragment(getHomeFragment(), 0));
         tabAdd.setOnClickListener(v -> openNoteActivity(null));
@@ -56,7 +95,6 @@ public class HomeActivity extends AppCompatActivity {
         tabProfile.setOnClickListener(v -> loadFragment(getProfileFragment(), 2));
     }
 
-    // --- NETWORK STATUS OBSERVER ---
     private void setupNetworkObserver() {
         connectionLiveData = new ConnectionLiveData(this);
         connectionLiveData.observe(this, status -> {
@@ -70,7 +108,6 @@ public class HomeActivity extends AppCompatActivity {
         });
     }
 
-    // --- YEH SAB MISSING METHODS THE ---
     private HomeFragment getHomeFragment() {
         if (homeFragment == null) {
             homeFragment = new HomeFragment();
@@ -125,8 +162,7 @@ public class HomeActivity extends AppCompatActivity {
         } else {
             Fragment currentFragment = fragmentManager.findFragmentById(R.id.frame_layout);
             if (currentFragment instanceof HomeFragment) {
-                // HomeFragment ab LiveData istemal kar raha hai, to iski zaroorat shayad na ho
-                // lekin behtar hai ke rakhein
+                // This block can be used for refreshing if needed
             }
         }
     }

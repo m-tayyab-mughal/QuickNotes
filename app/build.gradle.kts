@@ -41,10 +41,12 @@ dependencies {
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.auth)
     implementation(libs.work.runtime)
+    implementation ("com.google.android.gms:play-services-location:21.2.0")
 
     // --- ROOM LIBRARY ---
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
+    implementation(libs.play.services.location)
     annotationProcessor(libs.room.compiler)
 
     // --- GUAVA LIBRARY (ListenableFuture ke liye) ---

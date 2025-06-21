@@ -1,10 +1,13 @@
 package com.example.quicknotes;
 
+import android.Manifest;
 import android.app.AlertDialog;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
@@ -14,6 +17,13 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.cardview.widget.CardView;
+import androidx.core.app.ActivityCompat;
+
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+
+import java.util.Locale;
 
 public class NoteActivity extends AppCompatActivity {
 
@@ -21,20 +31,27 @@ public class NoteActivity extends AppCompatActivity {
     private ImageView backButton, saveButton, deleteButton;
     private TextView toolbarTitle;
 
-    private NoteRepository noteRepository; // Repository ka istemal
+    // --- NEW: UI elements for location details ---
+    private CardView locationDetailsCard;
+    private TextView locationDetailsText;
+
+    private NoteRepository noteRepository;
     private AlertDialog loadingDialog;
 
     private Note existingNote;
     private boolean isEditMode = false;
+
+    private FusedLocationProviderClient fusedLocationProviderClient;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_note);
 
-        noteRepository = new NoteRepository(getApplication()); // Repository initialize karein
-
+        noteRepository = new NoteRepository(getApplication());
         initLoadingDialog();
+
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
 
         editTextTitle = findViewById(R.id.editTextTitle);
         editTextContent = findViewById(R.id.editTextContent);
@@ -42,6 +59,11 @@ public class NoteActivity extends AppCompatActivity {
         saveButton = findViewById(R.id.saveButton);
         deleteButton = findViewById(R.id.deleteButton);
         toolbarTitle = findViewById(R.id.toolbarTitle);
+
+        // --- NEW: Initialize location detail views ---
+        locationDetailsCard = findViewById(R.id.locationDetailsCard);
+        locationDetailsText = findViewById(R.id.locationDetailsText);
+
 
         if (getIntent().hasExtra("note")) {
             isEditMode = true;
@@ -52,6 +74,17 @@ public class NoteActivity extends AppCompatActivity {
                 editTextContent.setText(existingNote.getContent());
                 toolbarTitle.setText("Edit Note");
                 deleteButton.setVisibility(View.VISIBLE);
+
+                // --- NEW: Display location details if they exist ---
+                if (existingNote.getLatitude() != null && existingNote.getLongitude() != null) {
+                    String locationName = existingNote.getLocationName() != null ? existingNote.getLocationName() : "Saved Location";
+                    String details = String.format(Locale.US, "%s (Lat: %.2f, Lon: %.2f)",
+                            locationName, existingNote.getLatitude(), existingNote.getLongitude());
+                    locationDetailsText.setText(details);
+                    locationDetailsCard.setVisibility(View.VISIBLE);
+                } else {
+                    locationDetailsCard.setVisibility(View.GONE);
+                }
             }
         }
 
@@ -83,7 +116,6 @@ public class NoteActivity extends AppCompatActivity {
         showLoadingDialog("Saving...");
 
         Note noteToSave;
-
         if (isEditMode && existingNote != null) {
             noteToSave = existingNote;
             noteToSave.setTitle(title);
@@ -94,16 +126,30 @@ public class NoteActivity extends AppCompatActivity {
             noteToSave.setContent(content);
         }
 
-        noteRepository.insertOrUpdateNote(noteToSave);
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(this, "Location permission not granted. Saving without location.", Toast.LENGTH_LONG).show();
+            noteRepository.insertOrUpdateNote(noteToSave, null);
+            hideLoadingDialog();
+            finish();
+            return;
+        }
 
-        // Repository background mein kaam karega, hum UI foran band kar sakte hain
-        hideLoadingDialog();
-        Toast.makeText(this, "Note saved.", Toast.LENGTH_SHORT).show();
-        finish();
+        fusedLocationProviderClient.getLastLocation()
+                .addOnSuccessListener(this, location -> {
+                    noteRepository.insertOrUpdateNote(noteToSave, location);
+                    hideLoadingDialog();
+                    Toast.makeText(this, "Note saved.", Toast.LENGTH_SHORT).show();
+                    finish();
+                })
+                .addOnFailureListener(this, e -> {
+                    Log.e("NoteActivity", "Failed to get location.", e);
+                    noteRepository.insertOrUpdateNote(noteToSave, null);
+                    hideLoadingDialog();
+                    Toast.makeText(this, "Note saved, but location could not be determined.", Toast.LENGTH_LONG).show();
+                    finish();
+                });
     }
 
-    // --- YEH METHOD UPDATE KIYA GAYA HAI ---
-    // Ab yeh default dialog ki jagah custom dialog istemal karega
     private void confirmDelete() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         LayoutInflater inflater = this.getLayoutInflater();
