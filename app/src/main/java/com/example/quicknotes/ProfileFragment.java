@@ -44,7 +44,6 @@ public class ProfileFragment extends Fragment {
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
 
-    // --- CHANGE 1: Replace ProgressDialog with AlertDialog for the custom dialog ---
     private AlertDialog loadingDialog;
 
     @Override
@@ -60,7 +59,6 @@ public class ProfileFragment extends Fragment {
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
 
-        // --- CHANGE 2: Initialize our new custom dialog ---
         initLoadingDialog();
 
         etName = view.findViewById(R.id.etProfileName);
@@ -78,11 +76,84 @@ public class ProfileFragment extends Fragment {
             }
         });
 
-        btnLogout.setOnClickListener(v -> logout());
-        btnDeluser.setOnClickListener(v -> showDeleteConfirmationDialog());
+        btnLogout.setOnClickListener(v -> showLogoutConfirmationDialog());
+
+        btnDeluser.setOnClickListener(v -> showDeleteAccountConfirmationDialog());
     }
 
-    // --- CHANGE 3: Add this new method to build the dialog from the layout file ---
+    private void showLogoutConfirmationDialog() {
+        if (getContext() == null) return;
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_confirm_delete, null);
+        builder.setView(dialogView);
+
+        final AlertDialog dialog = builder.create();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        TextView tvDialogTitle = dialogView.findViewById(R.id.tvDialogTitle);
+        TextView tvDialogMessage = dialogView.findViewById(R.id.tvDialogMessage);
+        Button btnDialogCancel = dialogView.findViewById(R.id.btnDialogCancel);
+        Button btnDialogDelete = dialogView.findViewById(R.id.btnDialogDelete);
+
+        tvDialogTitle.setText("Logout");
+        tvDialogMessage.setText("Are you sure you want to log out?");
+        btnDialogDelete.setText("Logout");
+
+        btnDialogCancel.setOnClickListener(v -> dialog.dismiss());
+        btnDialogDelete.setOnClickListener(v -> {
+            dialog.dismiss();
+            logout();
+        });
+
+        dialog.show();
+    }
+
+    private void showDeleteAccountConfirmationDialog() {
+        if (getContext() == null) return;
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_confirm_delete, null);
+        builder.setView(dialogView);
+
+        final AlertDialog dialog = builder.create();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        TextView tvDialogTitle = dialogView.findViewById(R.id.tvDialogTitle);
+        TextView tvDialogMessage = dialogView.findViewById(R.id.tvDialogMessage);
+        Button btnDialogCancel = dialogView.findViewById(R.id.btnDialogCancel);
+        Button btnDialogDelete = dialogView.findViewById(R.id.btnDialogDelete);
+
+        tvDialogTitle.setText("Delete Account");
+        tvDialogMessage.setText("Are you sure you want to permanently delete your account? All your notes will be lost. This action cannot be undone.");
+
+        btnDialogCancel.setOnClickListener(v -> dialog.dismiss());
+        btnDialogDelete.setOnClickListener(v -> {
+            dialog.dismiss();
+            showAuthenticationDialog("delete");
+        });
+
+        dialog.show();
+    }
+
+    private void logout() {
+        mAuth.signOut();
+        Toast.makeText(getContext(), "Signed out successfully", Toast.LENGTH_SHORT).show();
+
+        if (getActivity() != null) {
+            Intent intent = new Intent(getActivity(), MainActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            getActivity().finish();
+        }
+    }
+
     private void initLoadingDialog() {
         if (getContext() == null) return;
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
@@ -128,22 +199,26 @@ public class ProfileFragment extends Fragment {
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_authenticate, null);
         builder.setView(dialogView);
 
+        TextView dialogTitle = dialogView.findViewById(R.id.tvAuthTitle);
+        if (dialogTitle != null) {
+            if ("delete".equals(action)) {
+                dialogTitle.setText("Confirm Deletion");
+            } else {
+                dialogTitle.setText("Verify Your Identity");
+            }
+        }
+
         final EditText etCurrentPassword = dialogView.findViewById(R.id.etCurrentPassword);
         Button btnVerify = dialogView.findViewById(R.id.btnVerify);
-        // === CHANGE 1: Cancel button ko find karein ===
         Button btnCancel = dialogView.findViewById(R.id.btnCancelAuth);
 
         final AlertDialog dialog = builder.create();
 
-        // Dialog ka background transparent karein taaki CardView ke corners nazar aayein
         if (dialog.getWindow() != null) {
             dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         }
 
-        // === CHANGE 2: Cancel button ke liye click listener set karein ===
-        btnCancel.setOnClickListener(v -> {
-            dialog.dismiss(); // Sirf dialog ko band kar dein
-        });
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
 
         btnVerify.setOnClickListener(v -> {
             String password = etCurrentPassword.getText().toString().trim();
@@ -178,6 +253,7 @@ public class ProfileFragment extends Fragment {
         dialog.show();
     }
 
+    // THIS METHOD IS NOW CORRECTED
     private void saveUserData() {
         showLoadingDialog("Updating Profile...");
 
@@ -196,6 +272,7 @@ public class ProfileFragment extends Fragment {
 
         if (!Objects.equals(user.getDisplayName(), newName)) {
             UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder().setDisplayName(newName).build();
+            // THE FIX IS HERE
             updateTasks.add(user.updateProfile(profileUpdates));
         }
 
@@ -223,28 +300,6 @@ public class ProfileFragment extends Fragment {
                 Toast.makeText(getContext(), "Failed to update profile. Please try again.", Toast.LENGTH_LONG).show();
             }
         });
-    }
-
-    private void logout() {
-        mAuth.signOut();
-        Toast.makeText(getContext(), "Signed out successfully", Toast.LENGTH_SHORT).show();
-
-        if (getActivity() != null) {
-            Intent intent = new Intent(getActivity(), MainActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            startActivity(intent);
-            getActivity().finish();
-        }
-    }
-
-    private void showDeleteConfirmationDialog() {
-        if (getContext() == null) return;
-        new AlertDialog.Builder(getContext())
-                .setTitle("Delete Account")
-                .setMessage("Are you sure? This is permanent and will delete all your notes.")
-                .setPositiveButton("Delete", (dialog, which) -> showAuthenticationDialog("delete"))
-                .setNegativeButton("Cancel", null)
-                .show();
     }
 
     private void deleteAccount() {
@@ -286,7 +341,6 @@ public class ProfileFragment extends Fragment {
                 });
     }
 
-    // --- CHANGE 5: Add these helper methods to control the new dialog ---
     private void showLoadingDialog(String message) {
         if (loadingDialog != null) {
             loadingDialog.show();
