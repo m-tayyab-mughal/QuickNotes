@@ -11,7 +11,6 @@ public class DeletedNote {
     @NonNull
     private String id;
 
-    // Room ke liye constructor zaroori hai
     public DeletedNote(@NonNull String id) {
         this.id = id;
     }

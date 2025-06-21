@@ -38,7 +38,6 @@ public class ConnectionLiveData extends LiveData<String> {
     @Override
     protected void onInactive() {
         super.onInactive();
-        // Jab LiveData inactive ho to receiver unregister karo taake memory leak na ho
         try {
             context.unregisterReceiver(networkReceiver);
         } catch (IllegalArgumentException e) {
